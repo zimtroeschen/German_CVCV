@@ -14,18 +14,19 @@ namespace OpenUtau.Plugin.Builtin {
         /// German CVCV phonemizer that's totally broken and doesn't work at all.
         /// If you manage to fix it, I'll give you 20 euro, pinky promise.
         /// Uses the French VCCV phonemizer by Mim as a base (big shoutout to her for helping me).
+        /// Cadlaxa here q(≧▽≦q)
         /// </summary>
         /// 
 
         private readonly string[] vowels = "a,@,6,E,e,i,I,O,o,U,u,oe,0,Y,y,aU,aI,OI".Split(',');
         private readonly string[] consonants = "-,b,ch,d,dZ,f,g,h,j,k,m,n,N,l,p,pf,r,R,s,ss,S,t,w,x,z,Z".Split(',');
-        private readonly string[] Normalcons = "b,d,g,k,p,t,R".Split(',');
+        private readonly string[] Normalcons = "b,d,g,k,p,t".Split(',');
         private readonly string[] Affricates = "ch,dZ,x".Split(',');
         private readonly string[] Tap = "r".Split(',');
         private readonly string[] SemiLongcons = "h,y,m,n,N,l,w".Split(',');
-        private readonly string[] Longcons = "f,pf,s,ss,S,z,Z".Split(',');
+        private readonly string[] Longcons = "f,pf,s,ss,S,z,Z,R".Split(',');
         private readonly Dictionary<string, string> dictionaryReplacements = ("aa=a,ae=E,ah=@,ao=O,aw=aU,ax=@,ay=aI," +
-            "b=b,cc=ch,ch=S,d=d,dh=ss," + "ee=e,eh=E,er=6,ex=6," + "f=f,g=g,hh=h,ih=I,iy=i,jh=dZ,k=k,l=l,m=m,n=n,ng=N," +
+            "b=b,cc=ch,ch=S,d=d,dh=ss," + "ee=e,eh=E,er=6,ex=R," + "f=f,g=g,hh=h,ih=I,iy=i,jh=dZ,k=k,l=l,m=m,n=n,ng=N," +
             "oe=oe,ohh=0,ooh=o,oy=OI," + "p=p,pf=pf,q=-,r=r;,rr=r;,s=ss,sh=S,t=t," + "th=ss,ts=z," + "ue=y,uh=U,uw=u," + "v=w,w=w,x=x,y=j," +
             "yy=Y," + "z=s,zh=Z").Split(',')
                 .Select(entry => entry.Split('='))
@@ -423,7 +424,7 @@ namespace OpenUtau.Plugin.Builtin {
             }
             foreach (var c in Longcons) {
                 if (alias.Contains(c) && !alias.StartsWith(c) && !alias.Contains($"{c}-")) {
-                    return base.GetTransitionBasicLengthMs() * 2.0;
+                    return base.GetTransitionBasicLengthMs() * 2.3;
                 }
             }
             foreach (var c in Affricates) {
