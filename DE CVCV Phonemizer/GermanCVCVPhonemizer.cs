@@ -8,7 +8,7 @@ using OpenUtau.Core.G2p;
 using Serilog;
 
 namespace OpenUtau.Plugin.Builtin {
-    [Phonemizer("German CVCV Phonemizer", "DE CVCV", "Zim", language: "DE")]
+    [Phonemizer("German CVCV Phonemizer", "DE CVCV", "Zim, Mim & Cadlaxa", language: "DE")]
     public class GermanCVCVPhonemizer : SyllableBasedPhonemizer {
         /// <summary>
         /// German CVCV phonemizer that's totally broken and doesn't work at all.
@@ -74,22 +74,37 @@ namespace OpenUtau.Plugin.Builtin {
 
             return new G2pFallbacks(g2ps.ToArray());
         }
-
+        protected override string[] GetSymbols(Note note) {
+            string[] original = base.GetSymbols(note);
+            if (original == null) {
+                return null;
+            }
+            List<string> modified = new List<string>();
+            // Splits diphthongs and affricates if not present in the bank
+            string[] diphthongs = new[] { "aI", "eI", "OI", "aU", "oU", "ai", "ei", "Oi", "au", "ou", "Ou", "@u", };
+            foreach (string s in original) {
+                if (diphthongs.Contains(s) && !HasOto($"- {s}", note.tone) && !HasOto(s, note.tone)) {
+                    modified.AddRange(new string[] { s[0].ToString(), s[1] + s[1].ToString() });
+                } else {
+                    modified.Add(s);
+                }
+            }
+            return modified.ToArray();
+        }
         private readonly Dictionary<string, string> vvExceptions =
             new Dictionary<string, string>() {
-                {"O","O"},
-                {"o","o"},
-                {"U","U"},
-                {"u","u"},
-                {"oo","oo"},
+                {"O","w"},
+                {"o","w"},
+                {"U","w"},
+                {"u","w"},
+                {"oo","w"},
                 {"aU","w"},
-                {"Y","Y"},
-                {"y","y"},
-                {"aI","y"},
-                {"OI","y"},
+                {"Y","i"},
+                {"y","i"},
+                {"aI","i"},
+                {"OI","i"},
                 {"i","i"},
-                {"E","E"},
-                {"I","I" }
+                {"6","r"},
 
             };
 
@@ -122,16 +137,19 @@ namespace OpenUtau.Plugin.Builtin {
                     basePhoneme = $"{prevV}{v}";
                     if (!HasOto(basePhoneme, syllable.vowelTone) && vvExceptions.ContainsKey(prevV) && prevV != v) {
                         // VV IS NOT PRESENT, CHECKS VVEXCEPTIONS LOGIC
-                        //var vc = $"{prevV}{vvExceptions[prevV]}";
-                        //if (!HasOto(vc, syllable.vowelTone)) {
-                        //    vc = $"{prevV} {vvExceptions[prevV]}";
-                        //}
-                        //TryAddPhoneme(phonemes, syllable.tone, vc);
+                        var vc = $"{prevV}{vvExceptions[prevV]}";
+                        if (!HasOto(vc, syllable.vowelTone)) {
+                            vc = $"{prevV} {vvExceptions[prevV]}";
+                        }
+                        TryAddPhoneme(phonemes, syllable.tone, vc);
                         var cv = $"{vvExceptions[prevV]}{v}";
                         basePhoneme = cv;
                     } else {
                         {
                             if (HasOto(v, syllable.vowelTone) || HasOto(ValidateAlias(v), syllable.vowelTone)) {
+                                basePhoneme = $"{v}";
+                            } else if (!HasOto($"{prevV}{vvExceptions[prevV]}", syllable.vowelTone) || !HasOto(ValidateAlias($"{prevV}{vvExceptions[prevV]}"), syllable.vowelTone)) {
+                                // MAKE THEM [V]
                                 basePhoneme = $"{v}";
                             } else if (!HasOto(basePhoneme, syllable.vowelTone) || !HasOto(ValidateAlias(basePhoneme), syllable.vowelTone)) {
                                 // MAKE THEM A GLOTTAL STOP INSTEAD
@@ -196,13 +214,16 @@ namespace OpenUtau.Plugin.Builtin {
                 for (var i = lastC + 1; i >= 0; i--) {
                     var vr = $"{prevV}-";
                     var vc = $"{prevV}{cc[0]}";
-                    // CCV will trigger VCC
+                    var vc1 = $"{prevV} {cc[0]}";
                     if (i == 0 && (HasOto(vr, syllable.tone) || HasOto(ValidateAlias(vr), syllable.tone)) && !HasOto(vc, syllable.tone)) {
                         phonemes.Add(vr);
                         phonemes.Add($"-{cc[0]}");
                         break;
                     } else if (HasOto(vc, syllable.tone) || HasOto(ValidateAlias(vc), syllable.tone)) {
                         phonemes.Add(vc);
+                        break;
+                    } else if (HasOto(vc1, syllable.tone) || HasOto(ValidateAlias(vc1), syllable.tone)) {
+                        phonemes.Add(vc1);
                         break;
                     } else {
                         continue;
@@ -377,6 +398,21 @@ namespace OpenUtau.Plugin.Builtin {
                     alias = alias.Replace(syllable.Key, syllable.Value);
                 }
             }
+            //VC's
+            foreach (var v1 in new[] { "aI", "OI" }) {
+                foreach (var c1 in consonants) {
+                    if (!alias.Contains($"{v1}{c1}")) {
+                        alias = alias.Replace(v1 + c1, "e" + c1);
+                    }
+                }
+            }
+            foreach (var v1 in new[] { "aU", "u" }) {
+                foreach (var c1 in consonants) {
+                    if (!alias.Contains($"{v1}{c1}")) {
+                        alias = alias.Replace(v1 + c1, "u" + c1);
+                    }
+                }
+            }
             if (alias == "w-") {
                 return alias.Replace("w", "u");
             }
@@ -419,7 +455,7 @@ namespace OpenUtau.Plugin.Builtin {
             }
             foreach (var c in Tap) {
                 if (alias.Contains(c) && !alias.StartsWith(c) && !alias.Contains($"{c}-")) {
-                    return base.GetTransitionBasicLengthMs() * 0.5;
+                    return base.GetTransitionBasicLengthMs() * 0.7;
                 }
             }
             foreach (var c in Longcons) {
